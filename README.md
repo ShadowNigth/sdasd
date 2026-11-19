@@ -18,7 +18,7 @@ Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminac
 | G / F / H | Lanzar granada explosiva / aturdidora / de humo |
 | B / Tab / Esc | Comprar en preparación / consultar marcador / pausar |
 
-La ronda empieza con una fase de compra. El arsenal incluye 32 armas de fuego con modelos y sonidos recuperados y estadísticas adaptadas para este port. Las granadas se compran por separado; las aturdidoras requieren línea de visión y el humo interrumpe la detección de los bots. En `AWP Lego 2`, acercate a una escalera y usá W/S para subir o bajar. El dinero se gana con bajas y resultados de ronda; si sobrevivís conservás el equipo. Si te eliminan, la cámara pasa a un compañero hasta la ronda siguiente. En pausa podés ajustar sensibilidad y volumen.
+La ronda empieza con una fase de compra. El arsenal incluye 32 armas de fuego con modelos y sonidos recuperados y estadísticas adaptadas para este port. Las granadas se compran por separado; las aturdidoras requieren línea de visión y el humo interrumpe la detección de los bots. En `$2000$` podés recoger armas y granadas en las posiciones del original. En `AWP Lego 2`, acercate a una escalera y usá W/S para subir o bajar. El dinero se gana con bajas y resultados de ronda; si sobrevivís conservás el equipo. Si te eliminan, la cámara pasa a un compañero hasta la ronda siguiente. En pausa podés ajustar sensibilidad y volumen.
 
 Los bots son propios de esta versión: buscan por rutas de navegación, detectan enemigos por campo de visión con oclusión, reaccionan según dificultad, recuerdan posiciones vistas, se desplazan lateralmente y son capaces de buscar una interrupción de la línea de visión al recargar. No dependen de lógica multijugador de Unity.
 

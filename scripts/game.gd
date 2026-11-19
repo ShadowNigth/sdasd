@@ -2,6 +2,7 @@ extends Node3D
 
 const Arena = preload("res://scripts/arena.gd")
 const Objective = preload("res://scripts/objective.gd")
+const Pickup = preload("res://scripts/pickup.gd")
 const Grenade = preload("res://scripts/grenade.gd")
 const Fighter = preload("res://scripts/fighter.gd")
 const Arsenal = preload("res://scripts/arsenal.gd")
@@ -150,6 +151,10 @@ func new_round() -> void:
 				if round_index > 1 or deathmatch:
 					actor.owned.append(2 if index == 2 and (round_index > 2 or deathmatch) else (1 if squad == 1 else 12))
 					actor.equip(actor.owned.back())
+	for entry in arena.pickups:
+		var pickup := Pickup.new()
+		roster.add_child(pickup)
+		pickup.setup(self, entry[0], Vector3(entry[1][0], entry[1][1], entry[1][2]))
 	objective = null
 	phase = Phase.BUY
 	time_left = 6.0

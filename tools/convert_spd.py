@@ -151,7 +151,7 @@ def convert_level(base, assets, source_name, name):
 
     visible = Obj(ROOT / 'maps' / (name + '.obj'), assets)
     physics = Obj(ROOT / 'maps' / (name + '_solid.obj'), assets)
-    spawns = {'ct': [], 't': [], 'ladders': []}
+    spawns = {'ct': [], 't': [], 'ladders': [], 'pickups': []}
     for key, (kind, data) in scene.items():
         if kind != 'GameObject' or data['m_IsActive'] != '1' or key not in by_object:
             continue
@@ -160,6 +160,8 @@ def convert_level(base, assets, source_name, name):
             continue
         matrix = transform(components['Transform'][0][0])
         label = data['m_Name']
+        if data.get('m_TagString') == 'WeaponMap':
+            spawns['pickups'].append([label, (matrix[:3, 3] * [1, 1, -1]).round(4).tolist()])
         if label in ('SpawnCT', 'SpawnT'):
             spawns[label[5:].lower()].append((matrix[:3, 3] * [1, 1, -1]).round(4).tolist())
         if 'MeshFilter' in components and 'MeshRenderer' in components:

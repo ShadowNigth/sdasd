@@ -34,7 +34,7 @@ jobs:
             if [ "$status" != 0 ]; then echo "::error::Godot terminó con código $status: $*"; return "$status"; fi
           }
           run_checked "$godot" --headless --editor --path . --import
-          run_checked xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 "$godot" --path . --script tests/smoke.gd
+          run_checked xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 "$godot" --audio-driver Dummy --path . --script tests/smoke.gd
       - name: Export verified desktop builds
         run: |
           version=4.3.stable
@@ -48,7 +48,7 @@ jobs:
           test -s exports/linux/spd-offline.x86_64
           test -s exports/windows/spd-offline.exe
           chmod +x exports/linux/spd-offline.x86_64
-          timeout 20s xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 exports/linux/spd-offline.x86_64 --quit-after 5
+          timeout 20s xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 exports/linux/spd-offline.x86_64 --audio-driver Dummy --quit-after 5
           tar -C exports/linux -czf exports/SPD-Offline-Linux.tar.gz spd-offline.x86_64
       - uses: actions/upload-artifact@v4
         with:
