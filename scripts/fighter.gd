@@ -84,7 +84,7 @@ func setup(owner_game: Node3D, is_human: bool, side: int, label: String) -> void
 	equip(0)
 
 func equip(index: int) -> void:
-	if not owned.has(index):
+	if index != Arsenal.KNIFE and not owned.has(index):
 		return
 	magazine[weapon] = Vector2i(rounds, reserve)
 	weapon = index
@@ -100,7 +100,8 @@ func equip(index: int) -> void:
 			view_weapon.remove_child(part)
 			part.queue_free()
 		var model := MeshInstance3D.new()
-		model.mesh = load("res://assets/models/" + w.mesh + ".obj")
+		var mesh_name: String = "w_knife_default_t" if index == Arsenal.KNIFE and team == 1 else w.mesh
+		model.mesh = load("res://assets/models/" + mesh_name + ".obj")
 		model.rotation_degrees.x = 90
 		model.position = Vector3(0.20, -0.17, -0.26 if weapon == 0 else -0.13)
 		view_weapon.add_child(model)
@@ -173,6 +174,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		start_reload()
 	elif event.is_action_pressed("sidearm"):
 		equip(0)
+	elif event.is_action_pressed("knife"):
+		equip(Arsenal.KNIFE)
 	elif event.is_action_pressed("primary"):
 		equip(owned.back())
 
@@ -190,11 +193,13 @@ func play(clip: String) -> void:
 func fire(direction: Vector3, accuracy: float) -> void:
 	if reloading > 0.0 or cooldown > 0.0:
 		return
-	if rounds <= 0:
+	var w: Dictionary = Arsenal.WEAPONS[weapon]
+	var melee: bool = w.get("melee", false)
+	if rounds <= 0 and not melee:
 		start_reload()
 		return
-	var w: Dictionary = Arsenal.WEAPONS[weapon]
-	rounds -= 1
+	if not melee:
+		rounds -= 1
 	cooldown = w.delay
 	play(w.sound)
 	var spread: float = w.spread * accuracy
@@ -202,7 +207,8 @@ func fire(direction: Vector3, accuracy: float) -> void:
 	for pellet in range(w.get("pellets", 1)):
 		var shot := (direction + Vector3(randfn(0.0, spread), randfn(0.0, spread), randfn(0.0, spread))).normalized()
 		var origin := eye()
-		var hit := ray(origin, origin + shot * (35.0 if w.has("pellets") else 150.0))
+		var reach := 2.05 if melee else (35.0 if w.has("pellets") else 150.0)
+		var hit := ray(origin, origin + shot * reach)
 		if hit.is_empty():
 			continue
 		var enemy = hit.collider
@@ -254,7 +260,7 @@ func player_move(delta: float) -> void:
 	var axis := Input.get_vector("left", "right", "forward", "back")
 	var direction := transform.basis * Vector3(axis.x, 0, axis.y)
 	var ladder: bool = game.arena.near_ladder(global_position + Vector3.UP * 0.55)
-	var speed := 2.25 if crouched or Input.is_action_pressed("walk") else 5.35
+	var speed := 2.25 if crouched or Input.is_action_pressed("walk") else (5.85 if weapon == Arsenal.KNIFE else 5.35)
 	velocity.x = move_toward(velocity.x, direction.x * speed, delta * (34.0 if is_on_floor() else 10.0))
 	velocity.z = move_toward(velocity.z, direction.z * speed, delta * (34.0 if is_on_floor() else 10.0))
 	if ladder and not crouched:

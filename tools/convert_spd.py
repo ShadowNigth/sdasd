@@ -213,7 +213,7 @@ def main(decompiled):
     textures = {'w_rif_ak47': 'ak47', 'w_snip_awp': 'awp', 'w_pist_deagle': 'pist_deagle'}
     names = set(re.findall(r'"mesh": "([^"]+)"', catalog))
     names.update(('ctm_idf', 'tm_leet_variantA', 'w_eq_flashbang',
-                  'w_eq_fraggrenade_combine', 'w_eq_smokegrenade_combine'))
+                  'w_eq_fraggrenade_combine', 'w_eq_smokegrenade_combine', 'w_knife_default_t'))
     for name in sorted(names):
         obj = Obj(ROOT / 'models' / (name + '.obj'), {})
         obj.add(cache / 'Mesh' / (name + '.asset'), np.eye(4))

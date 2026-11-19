@@ -35,3 +35,23 @@ jobs:
           }
           run_checked --headless --editor --path . --import
           run_checked --headless --path . --script tests/smoke.gd
+      - name: Export verified desktop builds
+        run: |
+          version=4.3.stable
+          curl --fail --location --retry 3 https://github.com/godotengine/godot-builds/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -o /tmp/templates.tpz
+          unzip -q /tmp/templates.tpz 'templates/linux_release.x86_64' 'templates/windows_release_x86_64.exe' -d /tmp/godot-templates
+          mkdir -p "$HOME/.local/share/godot/export_templates/$version" exports/linux exports/windows
+          cp /tmp/godot-templates/templates/* "$HOME/.local/share/godot/export_templates/$version/"
+          godot=Godot_v4.3-stable_linux.x86_64
+          "$godot" --headless --path . --export-release Linux
+          "$godot" --headless --path . --export-release Windows
+          test -s exports/linux/spd-offline.x86_64
+          test -s exports/windows/spd-offline.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SPD-Offline-Linux
+          path: exports/linux/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SPD-Offline-Windows
+          path: exports/windows/

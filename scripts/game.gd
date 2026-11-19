@@ -57,7 +57,7 @@ var mouse_slider: HSlider
 func _ready() -> void:
 	for entry in [["forward", KEY_W], ["back", KEY_S], ["left", KEY_A], ["right", KEY_D],
 		["jump", KEY_SPACE], ["crouch", KEY_CTRL], ["walk", KEY_SHIFT], ["reload", KEY_R],
-		["frag", KEY_G], ["flash", KEY_F], ["smoke", KEY_H], ["primary", KEY_1], ["sidearm", KEY_2], ["shop", KEY_B], ["pause", KEY_ESCAPE], ["score", KEY_TAB]]:
+		["frag", KEY_G], ["flash", KEY_F], ["smoke", KEY_H], ["knife", KEY_3], ["primary", KEY_1], ["sidearm", KEY_2], ["shop", KEY_B], ["pause", KEY_ESCAPE], ["score", KEY_TAB]]:
 		bind_action(entry[0], entry[1], false)
 	bind_action("fire", MOUSE_BUTTON_LEFT, true)
 	bind_action("zoom", MOUSE_BUTTON_RIGHT, true)
@@ -141,7 +141,7 @@ func new_round() -> void:
 				actor.equip(keep.back())
 			else:
 				if round_index > 1 or deathmatch:
-					actor.owned.append(2 if index == 2 and round_index > 2 else 1)
+					actor.owned.append(2 if index == 2 and (round_index > 2 or deathmatch) else (1 if squad == 1 else 12))
 					actor.equip(actor.owned.back())
 	phase = Phase.BUY
 	time_left = 6.0
@@ -155,7 +155,7 @@ func patrol_point(team: int) -> Vector3:
 	var desired := ally.lerp(enemy, randf_range(0.5, 1.0))
 	desired += Vector3(randf_range(-11.0, 11.0), 0, randf_range(-9.0, 9.0))
 	if arena.nav_ready:
-		return NavigationServer3D.region_get_closest_point(arena.region.get_rid(), desired)
+		return NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, desired)
 	return enemy
 
 func report_kill(attacker: Fighter, victim: Fighter) -> void:
@@ -412,7 +412,7 @@ func show_shop() -> void:
 	var catalog := VBoxContainer.new()
 	catalog.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(catalog)
-	for index in range(1, Arsenal.WEAPONS.size()):
+	for index in range(1, Arsenal.KNIFE):
 		var w: Dictionary = Arsenal.WEAPONS[index]
 		var entry := Button.new()
 		entry.text = "%s · equipar" % w.name if player.owned.has(index) else "%s · $%d" % [w.name, w.price]
@@ -450,7 +450,9 @@ func update_hud() -> void:
 	if not player.alive():
 		status_bar.text = "Espectador · " + (spectating.callsign if is_instance_valid(spectating) else "Esperando próxima ronda")
 	else:
-		status_bar.text = "♥ %03d      $%d      %s    %02d / %02d" % [player.health, wallet, w.name, player.rounds, player.reserve]
+		status_bar.text = "♥ %03d      $%d      %s" % [player.health, wallet, w.name]
+		if player.weapon != Arsenal.KNIFE:
+			status_bar.text += "    %02d / %02d" % [player.rounds, player.reserve]
 		status_bar.text += "    G:%d F:%d H:%d" % player.utility
 		if player.reloading > 0.0:
 			status_bar.text += "  ·  Recargando"

@@ -1,5 +1,6 @@
 extends RefCounted
 
+const KNIFE := 32
 const WEAPONS := [
 	{"name": "Deagle", "mesh": "w_pist_deagle", "sound": "deagle_01", "mag": 7, "reserve": 35, "damage": 42, "delay": 0.26, "reload": 1.3, "spread": 0.011, "price": 0, "auto": false},
 	{"name": "AK-47", "mesh": "w_rif_ak47", "sound": "ak47_01", "mag": 30, "reserve": 90, "damage": 29, "delay": 0.105, "reload": 1.8, "spread": 0.016, "price": 2700, "auto": true},
@@ -33,4 +34,5 @@ const WEAPONS := [
 	{"name": "G3SG1", "mesh": "w_snip_g3sg1", "sound": "g3sg1_01", "mag": 20, "reserve": 60, "damage": 68, "delay": 0.26, "reload": 2.5, "spread": 0.009, "price": 5000, "auto": false, "scope": true},
 	{"name": "SCAR-20", "mesh": "w_snip_scar20", "sound": "scar20_01", "mag": 20, "reserve": 60, "damage": 65, "delay": 0.26, "reload": 2.5, "spread": 0.009, "price": 5000, "auto": false, "scope": true},
 	{"name": "SSG 08", "mesh": "w_snip_ssg08", "sound": "ssg08_01", "mag": 10, "reserve": 30, "damage": 79, "delay": 1.10, "reload": 2.5, "spread": 0.009, "price": 1700, "auto": false, "scope": true},
+	{"name": "Cuchillo", "mesh": "w_knife_default_ct", "sound": "knife_slash1", "mag": 0, "reserve": 0, "damage": 47, "delay": 0.46, "reload": 0.0, "spread": 0.0, "price": 0, "auto": false, "melee": true},
 ]

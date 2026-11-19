@@ -13,7 +13,7 @@ Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminac
 | WASD / ratón | Moverse / apuntar |
 | Clic izquierdo / derecho | Disparar / alternar la mira en armas compatibles |
 | Espacio / Ctrl / Shift | Saltar / agacharse / caminar |
-| R / 1 / 2 | Recargar / arma principal / pistola |
+| R / 1 / 2 / 3 | Recargar / arma principal / pistola / cuchillo |
 | G / F / H | Lanzar granada explosiva / aturdidora / de humo |
 | B / Tab / Esc | Comprar en preparación / consultar marcador / pausar |
 
@@ -26,7 +26,7 @@ Los bots son propios de esta versión: buscan por rutas de navegación, detectan
 | Incluido | Pendiente para paridad con el original |
 | --- | --- |
 | Geometría estática, texturas principales, colisiones y puntos de aparición de los dos mapas recuperados | Disparadores y objetos destructibles originales, iluminación y efectos equivalentes |
-| 32 armas de fuego, tres granadas, escaleras para el jugador y dos personajes con colores de equipo | Armas cuerpo a cuerpo y C4, variantes, esqueletos, animaciones originales y sonidos restantes |
+| 32 armas de fuego, cuchillo, tres granadas, escaleras para el jugador y dos personajes con colores de equipo | C4, variantes, esqueletos, animaciones originales y sonidos restantes |
 | Menú local, eliminación por rondas y deathmatch, economía, HUD, mira, pausa y espectador | Otros modos, interfaz y opciones completas del original, controles táctiles y exportación Android |
 
 Esto **no es todavía un porte completo**. La referencia es una extracción de Unity con código descompilado y recursos serializados; se reutiliza contenido convertido y se reimplementa la lógica en GDScript. Las funciones de red, servicios y actualizador no son parte del objetivo offline.
