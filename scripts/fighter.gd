@@ -327,13 +327,14 @@ func bot_move(delta: float) -> void:
 			if weapon == 1 and rounds < before and rounds % 4 == 0:
 				cooldown += randf_range(0.22, 0.43)
 	else:
+		var objective_point = game.bot_objective(self)
 		if rounds <= 3:
 			start_reload()
 		if route_age <= 0.0:
 			route_age = randf_range(0.65, 1.05)
 			if patrol == Vector3.ZERO or global_position.distance_to(patrol) < 2.0 or agent.is_navigation_finished():
 				patrol = game.patrol_point(team)
-			agent.target_position = last_seen if memory > 0.0 else patrol
+			agent.target_position = objective_point if objective_point != null else (last_seen if memory > 0.0 else patrol)
 		if game.arena.nav_ready:
 			var step := agent.get_next_path_position() - global_position
 			step.y = 0
@@ -343,6 +344,8 @@ func bot_move(delta: float) -> void:
 			var step := patrol - global_position
 			step.y = 0
 			direction = step.normalized()
+		if objective_point != null and global_position.distance_to(objective_point) < 1.5:
+			direction = Vector3.ZERO
 		look_toward(direction, delta)
 	velocity.x = move_toward(velocity.x, direction.x * 4.1, delta * 24.0)
 	velocity.z = move_toward(velocity.z, direction.z * 4.1, delta * 24.0)

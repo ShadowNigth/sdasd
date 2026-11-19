@@ -43,15 +43,15 @@ func build(id: String) -> void:
 	var nav := NavigationMesh.new()
 	nav.cell_size = 0.25
 	nav.cell_height = 0.25
-	nav.agent_radius = 0.4
-	nav.agent_height = 1.65
-	nav.agent_max_climb = 0.35
+	nav.agent_radius = 0.5
+	nav.agent_height = 1.75
+	nav.agent_max_climb = 0.25
 	nav.agent_max_slope = 45.0
 	nav.filter_baking_aabb = world.mesh.get_aabb().grow(0.5)
 	region.navigation_mesh = nav
 	add_child(region)
 	var source := NavigationMeshSourceGeometryData3D.new()
-	source.add_mesh(collision.mesh, Transform3D.IDENTITY)
+	source.add_faces(shape.shape.get_faces(), Transform3D.IDENTITY)
 	NavigationServer3D.bake_from_source_geometry_data(nav, source)
 	region.navigation_mesh = nav
 	nav_ready = nav.get_polygon_count() > 0

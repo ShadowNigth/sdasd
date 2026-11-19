@@ -69,6 +69,21 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	expect(victim.alive(), "Deathmatch no reaparició al bot")
+	game.start_match("lego", 1, 2, 0, false, true)
+	game.time_left = 0.0
+	await process_frame
+	await process_frame
+	expect(is_instance_valid(game.objective), "Demolición no generó el objetivo")
+	if is_instance_valid(game.objective):
+		game.objective.carrier.global_position = game.objective.site
+		game.objective.carrier.ready_to_fire = false
+		game.objective.update(3.0)
+		expect(game.objective.armed, "La C4 no se plantó")
+		game.player.global_position = game.objective.site
+		game.player.velocity = Vector3.ZERO
+		Input.action_press("interact")
+		expect(game.objective.update(5.0) == 0, "La C4 no se desactivó")
+		Input.action_release("interact")
 	game.queue_free()
 	await process_frame
 	quit(1 if failed else 0)

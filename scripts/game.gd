@@ -1,6 +1,7 @@
 extends Node3D
 
 const Arena = preload("res://scripts/arena.gd")
+const Objective = preload("res://scripts/objective.gd")
 const Grenade = preload("res://scripts/grenade.gd")
 const Fighter = preload("res://scripts/fighter.gd")
 const Arsenal = preload("res://scripts/arsenal.gd")
@@ -20,6 +21,9 @@ var fighters: Array[Fighter] = []
 var player: Fighter
 var difficulty := 1
 var deathmatch := false
+var demolition := false
+var objective: Objective
+var map_id_selected := ""
 var team_size := 4
 var side := 0
 var scores := [0, 0]
@@ -57,7 +61,7 @@ var mouse_slider: HSlider
 func _ready() -> void:
 	for entry in [["forward", KEY_W], ["back", KEY_S], ["left", KEY_A], ["right", KEY_D],
 		["jump", KEY_SPACE], ["crouch", KEY_CTRL], ["walk", KEY_SHIFT], ["reload", KEY_R],
-		["frag", KEY_G], ["flash", KEY_F], ["smoke", KEY_H], ["knife", KEY_3], ["primary", KEY_1], ["sidearm", KEY_2], ["shop", KEY_B], ["pause", KEY_ESCAPE], ["score", KEY_TAB]]:
+		["frag", KEY_G], ["flash", KEY_F], ["smoke", KEY_H], ["interact", KEY_E], ["knife", KEY_3], ["primary", KEY_1], ["sidearm", KEY_2], ["shop", KEY_B], ["pause", KEY_ESCAPE], ["score", KEY_TAB]]:
 		bind_action(entry[0], entry[1], false)
 	bind_action("fire", MOUSE_BUTTON_LEFT, true)
 	bind_action("zoom", MOUSE_BUTTON_RIGHT, true)
@@ -81,7 +85,7 @@ func bind_action(action: String, code: int, mouse: bool) -> void:
 func controls_enabled() -> bool:
 	return phase == Phase.LIVE and not paused
 
-func start_match(map_id: String, bot_level: int, size: int, chosen_side: int, is_deathmatch := false) -> void:
+func start_match(map_id: String, bot_level: int, size: int, chosen_side: int, is_deathmatch := false, is_demolition := false) -> void:
 	clear_world()
 	scores = [0, 0]
 	wallet = 800
@@ -92,6 +96,8 @@ func start_match(map_id: String, bot_level: int, size: int, chosen_side: int, is
 	team_size = size
 	side = chosen_side
 	deathmatch = is_deathmatch
+	demolition = is_demolition
+	map_id_selected = map_id
 	if deathmatch:
 		wallet = 6500
 	paused = false
@@ -108,6 +114,7 @@ func clear_world() -> void:
 	arena = null
 	roster = null
 	player = null
+	objective = null
 	spectating = null
 	fighters.clear()
 
@@ -143,6 +150,7 @@ func new_round() -> void:
 				if round_index > 1 or deathmatch:
 					actor.owned.append(2 if index == 2 and (round_index > 2 or deathmatch) else (1 if squad == 1 else 12))
 					actor.equip(actor.owned.back())
+	objective = null
 	phase = Phase.BUY
 	time_left = 6.0
 	match_text = "Preparación · B para comprar"
@@ -184,6 +192,10 @@ func _process(delta: float) -> void:
 	time_left -= delta
 	if phase == Phase.BUY and time_left <= 0.0:
 		phase = Phase.LIVE
+		if demolition:
+			objective = Objective.new()
+			roster.add_child(objective)
+			objective.setup(self, arena, map_id_selected)
 		time_left = DM_DURATION if deathmatch else ROUND_DURATION
 		match_text = ""
 	elif phase == Phase.LIVE and deathmatch:
@@ -203,12 +215,18 @@ func _process(delta: float) -> void:
 		for actor in fighters:
 			if actor.alive():
 				alive_counts[actor.team] += 1
-		if alive_counts[0] == 0:
+		var result := objective.update(delta) if is_instance_valid(objective) else -1
+		var planted := is_instance_valid(objective) and objective.armed
+		if result >= 0:
+			finish_round(result, "C4 desactivada" if result == 0 else "C4 detonada")
+		elif alive_counts[0] == 0:
 			finish_round(1, "equipo eliminado")
-		elif alive_counts[1] == 0:
+		elif alive_counts[1] == 0 and not planted:
 			finish_round(0, "equipo eliminado")
-		elif time_left <= 0.0:
+		elif time_left <= 0.0 and not planted:
 			finish_round(0, "tiempo agotado")
+		elif is_instance_valid(objective):
+			match_text = objective.status(player)
 	elif phase == Phase.RESULT and time_left <= 0.0:
 		if scores.max() >= TARGET_SCORE:
 			show_result()
@@ -358,13 +376,13 @@ func show_menu() -> void:
 	status_bar.hide()
 	feed.hide()
 	panel("Strike Port Destruction", "SPD  /  PARTIDA LOCAL  /  GODOT")
-	mode_choice = option("Modo", ["Eliminación", "Deathmatch por equipos"], int(deathmatch))
+	mode_choice = option("Modo", ["Eliminación", "Deathmatch por equipos", "Demolición"], 2 if demolition else int(deathmatch))
 	map_choice = option("Mapa", ["$2000$", "AWP Lego 2"], 0)
 	diff_choice = option("Dificultad de bots", ["Recluta", "Veterano", "Experto"], difficulty)
 	team_choice = option("Tu equipo", ["CT · Defensa", "T · Asalto"], side)
 	count_choice = option("Jugadores por equipo", ["2 vs 2", "3 vs 3", "4 vs 4", "5 vs 5"], team_size - 2)
 	button("Iniciar partida", func() -> void:
-		start_match(MAPS[map_choice.selected], diff_choice.selected, count_choice.selected + 2, team_choice.selected, mode_choice.selected == 1))
+		start_match(MAPS[map_choice.selected], diff_choice.selected, count_choice.selected + 2, team_choice.selected, mode_choice.selected == 1, mode_choice.selected == 2))
 	make_label(content, 14, Color("a0b6cb"), "WASD mover · ratón apuntar · R recargar · B comprar\nEspacio saltar · Ctrl agacharse · Shift caminar · Esc pausa")
 	button("Salir", get_tree().quit)
 
@@ -507,3 +525,8 @@ func respawn_point(team: int) -> Vector3:
 			best_clearance = nearest
 			best = candidate
 	return best
+
+func bot_objective(actor: Fighter) -> Variant:
+	if is_instance_valid(objective) and (actor == objective.carrier or actor.team == 0 and objective.armed):
+		return objective.site
+	return null

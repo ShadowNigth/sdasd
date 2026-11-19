@@ -1,12 +1,12 @@
 # Strike Port Destruction · Offline para Godot
 
-Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminación local CT contra T o deathmatch por equipos, con compañeros y rivales controlados por bots. El juego no usa cuentas, servidores, Photon ni descargas en tiempo de ejecución.
+Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminación local CT contra T demolición con C4 o deathmatch por equipos, con compañeros y rivales controlados por bots. El juego no usa cuentas, servidores, Photon ni descargas en tiempo de ejecución.
 
 ## Abrir y jugar
 
 1. Importá `project.godot` en Godot 4.3 o posterior. Esperá a que termine la primera importación de los recursos.
 2. Presioná **F6** con `main.tscn` abierto o **F5** para ejecutar el proyecto.
-3. Elegí `$2000$` o `AWP Lego 2`, bando, dificultad y cantidad de jugadores por equipo. En eliminación ganás al llegar a ocho rondas. En deathmatch reaparecés tras caer; gana el primer equipo en llegar a 30 bajas o el que lidere al terminar cinco minutos.
+3. Elegí `$2000$` o `AWP Lego 2`, bando, dificultad y cantidad de jugadores por equipo. En eliminación y demolición ganás al llegar a ocho rondas. En demolición, T planta en A y CT puede desactivar manteniendo **E**. En deathmatch reaparecés tras caer; gana el primer equipo en llegar a 30 bajas o el que lidere al terminar cinco minutos.
 
 | Control | Acción |
 | --- | --- |
@@ -14,6 +14,7 @@ Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminac
 | Clic izquierdo / derecho | Disparar / alternar la mira en armas compatibles |
 | Espacio / Ctrl / Shift | Saltar / agacharse / caminar |
 | R / 1 / 2 / 3 | Recargar / arma principal / pistola / cuchillo |
+| E | Mantener para plantar/desactivar en el sitio A |
 | G / F / H | Lanzar granada explosiva / aturdidora / de humo |
 | B / Tab / Esc | Comprar en preparación / consultar marcador / pausar |
 
@@ -26,8 +27,8 @@ Los bots son propios de esta versión: buscan por rutas de navegación, detectan
 | Incluido | Pendiente para paridad con el original |
 | --- | --- |
 | Geometría estática, texturas principales, colisiones y puntos de aparición de los dos mapas recuperados | Disparadores y objetos destructibles originales, iluminación y efectos equivalentes |
-| 32 armas de fuego, cuchillo, tres granadas, escaleras para el jugador y dos personajes con colores de equipo | C4, variantes, esqueletos, animaciones originales y sonidos restantes |
-| Menú local, eliminación por rondas y deathmatch, economía, HUD, mira, pausa y espectador | Otros modos, interfaz y opciones completas del original, controles táctiles y exportación Android |
+| 32 armas de fuego, cuchillo, C4, tres granadas, escaleras para el jugador y dos personajes con colores de equipo | Variantes, esqueletos, animaciones originales y sonidos restantes |
+| Menú local, eliminación, demolición y deathmatch por equipos, economía, HUD, mira, pausa y espectador | Otros modos, interfaz y opciones completas del original, controles táctiles y exportación Android |
 
 Esto **no es todavía un porte completo**. La referencia es una extracción de Unity con código descompilado y recursos serializados; se reutiliza contenido convertido y se reimplementa la lógica en GDScript. Las funciones de red, servicios y actualizador no son parte del objetivo offline.
 
