@@ -40,15 +40,31 @@ def read_mesh(path):
     mesh = next(iter(documents(path).values()))[1]
     vd = mesh['m_VertexData']
     channels = vd['m_Channels']
-    stride = sum(int(c['dimension']) * (4, 2, 1, 1, 4)[int(c['format'])]
-                 for c in channels if c['stream'] == '0')
+    # Unity stores each vertex stream separately, aligned to 16 bytes.
+    sizes = (4, 2, 1, 1, 4)
+    strides = {}
+    for c in channels:
+        width = int(c['dimension']) * sizes[int(c['format'])]
+        if width:
+            stream = int(c['stream'])
+            strides[stream] = max(strides.get(stream, 0), int(c['offset']) + width)
     raw = bytes.fromhex(vd['_typelessdata'])
     count = int(vd['m_VertexCount'])
+    starts = {}
+    offset = 0
+    for stream, stride in sorted(strides.items()):
+        starts[stream] = offset
+        offset = (offset + count * stride + 15) & ~15
+
     def channel(i, dimension):
         c = channels[i]
-        if int(c['dimension']) < dimension or c['format'] != '0' or c['stream'] != '0':
+        dtype = {'0': '<f4', '1': '<f2'}.get(c['format'])
+        if int(c['dimension']) < dimension or dtype is None:
             return np.zeros((count, dimension))
-        return np.ndarray((count, dimension), '<f4', raw, int(c['offset']), (stride, 4)).copy()
+        stream = int(c['stream'])
+        return np.ndarray((count, dimension), dtype, raw,
+                          starts[stream] + int(c['offset']),
+                          (strides[stream], np.dtype(dtype).itemsize)).astype(np.float32)
     uv_channel = 3 if int(mesh['serializedVersion']) <= 8 else 4
     dtype = '<u2' if mesh['m_IndexFormat'] == '0' else '<u4'
     indices = np.frombuffer(bytes.fromhex(mesh['m_IndexBuffer']), dtype)

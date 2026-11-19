@@ -21,13 +21,14 @@ Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminac
 La ronda empieza con una fase de compra. El arsenal incluye 32 armas de fuego con modelos y sonidos recuperados y estadísticas adaptadas para este port. Las granadas se compran por separado; las aturdidoras requieren línea de visión y el humo interrumpe la detección de los bots. En `$2000$` podés recoger armas y granadas en las posiciones del original. En `AWP Lego 2`, acercate a una escalera y usá W/S para subir o bajar. El dinero se gana con bajas y resultados de ronda; si sobrevivís conservás el equipo. Si te eliminan, la cámara pasa a un compañero hasta la ronda siguiente. En pausa podés ajustar sensibilidad y volumen.
 
 Los bots son propios de esta versión: buscan por rutas de navegación, detectan enemigos por campo de visión con oclusión, reaccionan según dificultad, recuerdan posiciones vistas, se desplazan lateralmente y son capaces de buscar una interrupción de la línea de visión al recargar. No dependen de lógica multijugador de Unity.
+Los bots usan el esqueleto original con locomoción y postura de arma procedurales. En primera persona los brazos y guantes provienen de los modelos originales, con la pose base recuperada de un clip de Unity y movimientos de equipar, caminar, disparar y recargar adaptados a Godot. Se incluyen destellos, trazas e impactos visuales.
 
 ## Qué se porta y qué queda pendiente
 
 | Incluido | Pendiente para paridad con el original |
 | --- | --- |
 | Geometría estática, texturas principales, colisiones y puntos de aparición de los dos mapas recuperados | Disparadores y objetos destructibles originales, iluminación y efectos equivalentes |
-| 32 armas de fuego, cuchillo, C4, tres granadas, escaleras para el jugador y dos personajes con sus materiales originales | Variantes, esqueletos, animaciones originales y sonidos restantes |
+| 32 armas de fuego, cuchillo, C4, tres granadas, escaleras para el jugador y dos personajes con sus materiales y esqueletos originales; brazos y guantes CT/T | Variantes, animaciones originales completas y sonidos restantes |
 | Menú local, eliminación, demolición y deathmatch por equipos, economía, HUD, mira, pausa y espectador | Otros modos, interfaz y opciones completas del original, controles táctiles y exportación Android |
 
 Esto **no es todavía un porte completo**. La referencia es una extracción de Unity con código descompilado y recursos serializados; se reutiliza contenido convertido y se reimplementa la lógica en GDScript. Las funciones de red, servicios y actualizador no son parte del objetivo offline.
@@ -43,6 +44,7 @@ python -m venv .venv
 . .venv/bin/activate
 pip install numpy PyYAML
 python tools/convert_spd.py /ruta/a/spd/decompiled
+python tools/rig_spd.py /ruta/a/spd/decompiled
 ```
 
 ## Verificación y exportación

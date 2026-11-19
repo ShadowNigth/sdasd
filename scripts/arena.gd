@@ -34,11 +34,11 @@ func build(id: String) -> void:
 	env.environment.background_color = Color("9bb8c9")
 	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.environment.ambient_light_color = Color("dceaf5")
-	env.environment.ambient_light_energy = 0.65
+	env.environment.ambient_light_energy = 0.87
 	add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-58, -32, 0)
-	sun.light_energy = 0.75
+	sun.light_energy = 0.95
 	sun.shadow_enabled = true
 	add_child(sun)
 	region = NavigationRegion3D.new()

@@ -1,0 +1,6 @@
+newmtl m_d24cad0148a4df7439801cdfe57fd06d
+Kd 0.75 0.75 0.75
+map_Kd v_model_base_arms_color.png
+newmtl m_60243756d2a72ed40a83207a52734700
+Kd 0.75 0.75 0.75
+map_Kd t_base_fingerless_glove_color.png

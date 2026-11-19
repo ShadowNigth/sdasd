@@ -1,5 +1,6 @@
 extends CharacterBody3D
 
+const ShotFx = preload("res://scripts/shot_fx.gd")
 const Arsenal = preload("res://scripts/arsenal.gd")
 const PLAYER_HEIGHT := 1.74
 var game
@@ -17,7 +18,13 @@ var blind := 0.0
 var respawn_time := 0.0
 var utility: Array[int] = [0, 0, 0]
 var camera: Camera3D
-var visuals: MeshInstance3D
+var visuals: Node3D
+var rig: Skeleton3D
+var joints := {}
+var arms: MeshInstance3D
+var gun: MeshInstance3D
+var kick := 0.0
+var draw_time := 0.0
 var held: MeshInstance3D
 var movement_cycle := 0.0
 var view_weapon: Node3D
@@ -64,13 +71,24 @@ func setup(owner_game: Node3D, is_human: bool, side: int, label: String) -> void
 		camera.current = true
 		view_weapon = Node3D.new()
 		camera.add_child(view_weapon)
+		arms = MeshInstance3D.new()
+		arms.mesh = load("res://assets/models/" + ("ct_arms_grip" if team == 0 else "t_arms_grip") + ".obj")
+		arms.position = Vector3(0.11, -0.045, -0.10)
+		view_weapon.add_child(arms)
 		sound = AudioStreamPlayer.new()
 	else:
-		visuals = MeshInstance3D.new()
-		visuals.mesh = load("res://assets/models/" + ("ctm_idf" if team == 0 else "tm_leet_variantA") + ".obj")
+		var model: PackedScene = load("res://assets/models/" + ("ctm_idf_rig" if team == 0 else "tm_leet_variantA_rig") + ".gltf")
+		visuals = model.instantiate()
 		visuals.rotation_degrees.x = 90
 		visuals.scale = Vector3.ONE * 2.45
 		add_child(visuals)
+		var skeletons := visuals.find_children("*", "Skeleton3D", true, false)
+		if not skeletons.is_empty():
+			rig = skeletons[0] as Skeleton3D
+			for index in range(rig.get_bone_count()):
+				var key := rig.get_bone_name(index).to_lower().replace(" ", "").replace("_", "")
+				joints[key] = index
+			animate_bot(0.0)
 		held = MeshInstance3D.new()
 		add_child(held)
 		held.rotation_degrees.x = 90
@@ -98,15 +116,20 @@ func equip(index: int) -> void:
 	cooldown = maxf(cooldown, 0.2)
 	zoomed = false
 	if human:
-		for part in view_weapon.get_children():
-			view_weapon.remove_child(part)
-			part.queue_free()
+		if is_instance_valid(gun):
+			view_weapon.remove_child(gun)
+			gun.queue_free()
 		var model := MeshInstance3D.new()
 		var mesh_name: String = "w_knife_default_t" if index == Arsenal.KNIFE and team == 1 else w.mesh
 		model.mesh = load("res://assets/models/" + mesh_name + ".obj")
 		model.rotation_degrees.x = 90
-		model.position = Vector3(0.20, -0.17, -0.26 if weapon == 0 else -0.13)
+		var bounds := model.mesh.get_aabb()
+		var grip := Vector3(bounds.get_center().x, bounds.end.y - bounds.size.y * (0.30 if bounds.size.y < 0.22 else 0.32), bounds.get_center().z)
+		model.position = Vector3(0.19, -0.08, -0.27) - Basis(Vector3.RIGHT, PI * 0.5) * grip
+		model.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		view_weapon.add_child(model)
+		gun = model
+		draw_time = 0.19
 	else:
 		held.mesh = load("res://assets/models/" + w.mesh + ".obj")
 		var bounds := held.mesh.get_aabb()
@@ -213,6 +236,8 @@ func fire(direction: Vector3, accuracy: float) -> void:
 	play(w.sound)
 	var spread: float = w.spread * accuracy
 	var damage_by_target := {}
+	var trace_end := eye() + direction * 48.0
+	var world_hit := false
 	for pellet in range(w.get("pellets", 1)):
 		var shot := (direction + Vector3(randfn(0.0, spread), randfn(0.0, spread), randfn(0.0, spread))).normalized()
 		var origin := eye()
@@ -221,10 +246,17 @@ func fire(direction: Vector3, accuracy: float) -> void:
 		if hit.is_empty():
 			continue
 		var enemy = hit.collider
+		if pellet == 0:
+			trace_end = hit.position
+			world_hit = not enemy.has_method("hurt")
 		if enemy.has_method("hurt") and enemy.team != team:
 			var head: bool = hit.position.y - enemy.global_position.y > (1.08 if enemy.crouched else 1.43)
 			damage_by_target[enemy] = damage_by_target.get(enemy, 0) + int(w.damage * (2.7 if head else 1.0))
+	if not melee:
+		var muzzle := eye() + direction * 0.44 + global_transform.basis.x * (0.16 if human else 0.22) - Vector3.UP * 0.14
+		ShotFx.show_shot(get_parent(), muzzle, trace_end, world_hit)
 	if human:
+		kick = minf(kick + (0.07 if melee else 0.045), 0.115)
 		pitch = minf(1.47, pitch + (0.008 if weapon == 0 else 0.016))
 		if not damage_by_target.is_empty():
 			game.hit_flash = 0.15
@@ -262,7 +294,7 @@ func _physics_process(delta: float) -> void:
 		view_weapon.position.y = bob * 0.52
 	else:
 		visuals.position.y = bob
-		visuals.rotation.z = sin(movement_cycle * 0.5) * 0.05 * clampf(pace / 4.0, 0.0, 1.0)
+		animate_bot(pace)
 	if global_position.y < -60:
 		hurt(100, self)
 
@@ -288,8 +320,10 @@ func player_move(delta: float) -> void:
 	camera.rotation.x = pitch
 	camera.fov = lerpf(camera.fov, 31.0 if zoomed else 80.0, minf(1.0, delta * 20.0))
 	view_weapon.visible = not zoomed
-	view_weapon.position.z = maxf(0.0, cooldown - 0.02) * 0.065
-	view_weapon.rotation.x = -0.6 * clampf(reloading, 0.0, 1.0)
+	kick = move_toward(kick, 0.0, delta * 0.28)
+	draw_time = move_toward(draw_time, 0.0, delta)
+	view_weapon.position.z = kick
+	view_weapon.rotation.x = kick * 0.7 - 0.57 * clampf(reloading, 0.0, 1.0) - draw_time * 1.9
 	if trigger or (Arsenal.WEAPONS[weapon].auto and Input.is_action_pressed("fire")):
 		var motion := Vector2(velocity.x, velocity.z).length()
 		fire(-camera.global_transform.basis.z, (0.35 if zoomed else 1.0) + motion * 0.32 + (0.0 if is_on_floor() else 2.0))
@@ -383,3 +417,27 @@ func strafe_direction(enemy_direction: Vector3) -> Vector3:
 			if ray(eye(), candidate, 1).is_empty() and not ray(candidate, candidate + enemy_direction * 8.0, 1).is_empty():
 				return lateral * sign_value * 0.85
 	return lateral * 0.48
+
+func animate_bot(speed: float) -> void:
+	if not is_instance_valid(rig):
+		return
+	var walk := clampf(speed / 4.0, 0.0, 1.0)
+	var step := sin(movement_cycle) * walk
+	pose_joint("bip01lthigh", Vector3.RIGHT, step * 0.53)
+	pose_joint("bip01rthigh", Vector3.RIGHT, -step * 0.53)
+	pose_joint("bip01lcalf", Vector3.RIGHT, -absf(minf(step, 0.0)) * 0.74)
+	pose_joint("bip01rcalf", Vector3.RIGHT, -absf(maxf(step, 0.0)) * 0.74)
+	# Rig axes are in Unity's baked model space, before the upright parent rotation.
+	pose_joint("bip01lupperarm", Vector3(0.0, 0.73, 1.0).normalized(), 1.07)
+	pose_joint("bip01rupperarm", Vector3(0.0, -0.76, -1.0).normalized(), 1.08)
+	pose_joint("bip01lforearm", Vector3.UP, 0.45)
+	pose_joint("bip01rforearm", Vector3.UP, -0.65)
+	pose_joint("bip01spine2", Vector3.BACK, step * 0.075)
+
+func pose_joint(key: String, model_axis: Vector3, angle: float) -> void:
+	var index: int = joints.get(key, -1)
+	if index < 0:
+		return
+	var local_axis := (rig.get_bone_global_rest(index).basis.inverse() * model_axis).normalized()
+	var rest := rig.get_bone_rest(index).basis.orthonormalized().get_rotation_quaternion()
+	rig.set_bone_pose_rotation(index, rest * Quaternion(local_axis, angle))

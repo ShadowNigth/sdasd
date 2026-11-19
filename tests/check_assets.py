@@ -46,6 +46,9 @@ class ImportedAssets(unittest.TestCase):
                 self.assertTrue(all(len(face) == 3 and all(0 <= i < len(vertices) for i in face) for face in faces))
                 lines = obj.with_suffix('.mtl').read_text().splitlines()
                 self.assertTrue(all((obj.parent / line[7:]).is_file() for line in lines if line.startswith('map_Kd ')))
+                if any(line.startswith('map_Kd ') for line in lines):
+                    uv = {line for line in obj.read_text().splitlines() if line.startswith('vt ')}
+                    self.assertGreater(len(uv), 10, 'Textured mesh has collapsed UV coordinates')
 
     def test_original_spawns_have_a_floor(self):
         for name in ('2000', 'lego'):

@@ -1,0 +1,6 @@
+newmtl m_53abdb80f885a40478e1f19a0c7b52d3
+Kd 0.75 0.75 0.75
+map_Kd ct_base_glove_color.png
+newmtl m_4048d34f0c18558489f82ebaf611f770
+Kd 0.75 0.75 0.75
+map_Kd ct_arms_idf.png

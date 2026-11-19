@@ -11,6 +11,17 @@ func expect(condition: bool, message: String) -> void:
 		failed = true
 		push_error(message)
 
+func textured_mesh(mesh: ArrayMesh) -> bool:
+	for i in range(mesh.get_surface_count()):
+		var material := mesh.surface_get_material(i) as StandardMaterial3D
+		if material and material.albedo_texture:
+			var coords: PackedVector2Array = mesh.surface_get_arrays(i)[Mesh.ARRAY_TEX_UV]
+			if not coords.is_empty():
+				for uv in coords:
+					if not uv.is_equal_approx(coords[0]):
+						return true
+	return false
+
 func run() -> void:
 	var game: Game = load("res://main.tscn").instantiate()
 	root.add_child(game)
@@ -19,6 +30,11 @@ func run() -> void:
 		game.start_match(id, 1, 3, 0)
 		await physics_frame
 		await physics_frame
+		var map_mesh: ArrayMesh = load("res://assets/maps/" + id + ".obj")
+		expect(textured_mesh(map_mesh), id + " no tiene textura y UV funcionales")
+		expect(textured_mesh(game.player.arms.mesh), "Los brazos o guantes no conservan la textura")
+		var bot = game.fighters.back()
+		expect(is_instance_valid(bot.rig) and bot.joints.has("bip01lthigh"), "No se importó el esqueleto del bot")
 		expect(game.arena.nav_ready, id + " no pudo generar navegación")
 		expect(game.fighters.size() == 6, "Plantel incorrecto")
 		expect(game.phase == Game.Phase.BUY, "No se inició la fase de compra")
@@ -28,6 +44,7 @@ func run() -> void:
 		game.wallet = 3000
 		game.purchase(1)
 		expect(game.player.weapon == 1 and game.wallet == 300, "Compra de AK incorrecta")
+		expect(textured_mesh(game.player.gun.mesh), "El arma equipada no recibió sus texturas")
 		game.close_overlay()
 		game.time_left = 0.0
 		await process_frame
@@ -37,6 +54,12 @@ func run() -> void:
 		for frame in range(35):
 			await physics_frame
 		expect(target.is_on_floor(), "El bot no aterrizó en la colisión original")
+		if is_instance_valid(bot.rig) and bot.joints.has("bip01lthigh"):
+			var thigh: int = bot.joints["bip01lthigh"]
+			var rest: Quaternion = bot.rig.get_bone_rest(thigh).basis.get_rotation_quaternion()
+			bot.movement_cycle = PI * 0.5
+			bot.animate_bot(4.0)
+			expect(not rest.is_equal_approx(bot.rig.get_bone_pose_rotation(thigh)), "La animación no movió el rig")
 		for actor in game.fighters:
 			if actor.team == 1:
 				actor.hurt(100, game.player)
