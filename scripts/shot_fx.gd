@@ -40,3 +40,39 @@ static func show_shot(parent: Node3D, origin: Vector3, end: Vector3, wall_hit: b
 			var scatter := Vector3(randf_range(-0.3, 0.3), randf_range(0.05, 0.35), randf_range(-0.3, 0.3))
 			fade.parallel().tween_property(spark, "global_position", spark.global_position + scatter - gap.normalized() * 0.26, 0.12)
 	fade.tween_callback(fx.queue_free)
+
+static func eject_case(parent: Node3D, origin: Vector3, lateral: Vector3) -> void:
+	var casing := RigidBody3D.new()
+	casing.collision_layer = 4
+	casing.collision_mask = 1
+	casing.mass = 0.018
+	casing.continuous_cd = true
+	casing.physics_material_override = PhysicsMaterial.new()
+	casing.physics_material_override.bounce = 0.42
+	casing.physics_material_override.friction = 0.58
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.018
+	capsule.height = 0.071
+	shape.shape = capsule
+	casing.add_child(shape)
+	var model := MeshInstance3D.new()
+	var cylinder := CylinderMesh.new()
+	cylinder.top_radius = 0.015
+	cylinder.bottom_radius = 0.018
+	cylinder.height = 0.068
+	cylinder.radial_segments = 8
+	model.mesh = cylinder
+	var brass := StandardMaterial3D.new()
+	brass.albedo_color = Color("c99439")
+	brass.metallic = 0.52
+	brass.roughness = 0.37
+	model.material_override = brass
+	casing.add_child(model)
+	parent.add_child(casing)
+	casing.global_position = origin
+	casing.linear_velocity = lateral * randf_range(1.3, 2.4) + Vector3.UP * randf_range(0.8, 1.9)
+	casing.angular_velocity = Vector3(6.2, -2.4, 5.6)
+	var cleanup := casing.create_tween()
+	cleanup.tween_interval(2.35)
+	cleanup.tween_callback(casing.queue_free)

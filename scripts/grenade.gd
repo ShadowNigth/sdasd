@@ -9,6 +9,7 @@ var velocity := Vector3.ZERO
 var remaining := 1.45
 var smoke := false
 var visual: MeshInstance3D
+var bounce_sound: AudioStreamPlayer3D
 
 func launch(match_game, fighter, index: int, direction: Vector3) -> void:
 	game = match_game
@@ -22,6 +23,11 @@ func launch(match_game, fighter, index: int, direction: Vector3) -> void:
 	visual.scale = Vector3.ONE * (0.18 / bounds.size.length())
 	visual.position = -bounds.get_center() * visual.scale
 	add_child(visual)
+	bounce_sound = AudioStreamPlayer3D.new()
+	bounce_sound.stream = preload("res://assets/audio/grenade_hit1.ogg")
+	bounce_sound.max_distance = 22.0
+	bounce_sound.volume_db = -9.0
+	add_child(bounce_sound)
 
 func _physics_process(delta: float) -> void:
 	if not game.controls_enabled():
@@ -41,6 +47,8 @@ func _physics_process(delta: float) -> void:
 		global_position = destination
 	else:
 		global_position = hit.position + hit.normal * 0.055
+		if absf(velocity.dot(hit.normal)) > 2.0 and not bounce_sound.playing:
+			bounce_sound.play()
 		velocity = velocity.bounce(hit.normal) * 0.48
 	rotation.x += delta * 9.0
 

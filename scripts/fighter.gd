@@ -25,6 +25,9 @@ var arms: MeshInstance3D
 var gun: MeshInstance3D
 var kick := 0.0
 var draw_time := 0.0
+var fall: Tween
+var footsteps: AudioStreamPlayer3D
+var foot_distance := 0.0
 var held: MeshInstance3D
 var movement_cycle := 0.0
 var view_weapon: Node3D
@@ -101,6 +104,12 @@ func setup(owner_game: Node3D, is_human: bool, side: int, label: String) -> void
 		sound.max_distance = 65
 		sound.unit_size = 8
 	add_child(sound)
+	footsteps = AudioStreamPlayer3D.new()
+	footsteps.position.y = 0.18
+	footsteps.max_distance = 17.0
+	footsteps.unit_size = 2.25
+	footsteps.volume_db = -11.0 if human else -8.0
+	add_child(footsteps)
 	equip(0)
 
 func equip(index: int) -> void:
@@ -149,8 +158,11 @@ func hurt(amount: int, attacker: CharacterBody3D) -> void:
 	if not alive():
 		collision_layer = 0
 		if visuals:
-			visuals.hide()
 			held.hide()
+			fall = visuals.create_tween()
+			fall.tween_property(visuals, "rotation:x", PI - 0.06, 0.39).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			fall.tween_interval(1.4)
+			fall.tween_callback(visuals.hide)
 		if view_weapon:
 			view_weapon.hide()
 		game.report_kill(attacker, self)
@@ -178,6 +190,9 @@ func respawn(point: Vector3, facing: float) -> void:
 	route_age = 0.0
 	patrol = Vector3.ZERO
 	if visuals:
+		if fall and fall.is_valid():
+			fall.kill()
+		visuals.rotation = Vector3(PI * 0.5, 0, 0)
 		visuals.show()
 		held.show()
 	if camera:
@@ -255,6 +270,8 @@ func fire(direction: Vector3, accuracy: float) -> void:
 	if not melee:
 		var muzzle := eye() + direction * 0.44 + global_transform.basis.x * (0.16 if human else 0.22) - Vector3.UP * 0.14
 		ShotFx.show_shot(get_parent(), muzzle, trace_end, world_hit)
+		if human:
+			ShotFx.eject_case(get_parent(), muzzle - direction * 0.20, global_transform.basis.x)
 	if human:
 		kick = minf(kick + (0.07 if melee else 0.045), 0.115)
 		pitch = minf(1.47, pitch + (0.008 if weapon == 0 else 0.016))
@@ -289,6 +306,13 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	var pace := Vector2(velocity.x, velocity.z).length()
 	movement_cycle += pace * delta * 4.0
+	if is_on_floor() and pace > 0.5:
+		foot_distance += pace * delta
+		if foot_distance > 1.55:
+			foot_distance = 0.0
+			footsteps.volume_db = -19.0 if pace < 2.4 else -9.0
+			footsteps.stream = load("res://assets/audio/concrete_ct_%02d.ogg" % randi_range(1, 4))
+			footsteps.play()
 	var bob := sin(movement_cycle) * 0.023 * clampf(pace / 4.0, 0.0, 1.0)
 	if human:
 		view_weapon.position.y = bob * 0.52

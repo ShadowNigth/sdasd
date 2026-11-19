@@ -225,7 +225,8 @@ def main(decompiled):
         convert_level(base, assets, source, name)
     catalog = (ROOT.parent / 'scripts/arsenal.gd').read_text()
     sounds = set(re.findall(r'"sound": "([^"]+)"', catalog))
-    sounds.update(('ak47_clipin', 'grenade_throw', 'explode3', 'flashbang_explode1', 'smoke_emit'))
+    sounds.update(('ak47_clipin', 'grenade_throw', 'explode3', 'flashbang_explode1', 'smoke_emit', 'grenade_hit1'))
+    sounds.update(f'concrete_ct_{i:02d}' for i in range(1, 5))
     for name in sorted(sounds):
         shutil.copyfile(cache / 'AudioClip' / (name + '.ogg'), ROOT / 'audio' / (name + '.ogg'))
     textures = {'w_rif_ak47': 'ak47', 'w_snip_awp': 'awp', 'w_pist_deagle': 'pist_deagle'}
