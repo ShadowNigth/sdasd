@@ -1,6 +1,6 @@
 # Strike Port Destruction · Offline para Godot
 
-Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminación local CT contra T demolición con C4 o deathmatch por equipos, con compañeros y rivales controlados por bots. El juego no usa cuentas, servidores, Photon ni descargas en tiempo de ejecución.
+Primera versión del porte de escritorio a **Godot 4.3+**. Podés jugar eliminación local CT contra T, demolición con C4 o deathmatch por equipos, con compañeros y rivales controlados por bots. El juego no usa cuentas, servidores, Photon ni descargas en tiempo de ejecución.
 
 ## Abrir y jugar
 
@@ -54,6 +54,6 @@ godot --headless --editor --path . --import
 godot --headless --path . --script tests/smoke.gd
 ```
 
-El test de Godot abre los dos mapas y comprueba navegación, economía y transiciones de ronda. El entorno de trabajo verificó los activos y el análisis sintáctico de los scripts, pero no disponía de un binario de Godot para ejecutar la prueba de motor. El flujo de GitHub Actions deja esa comprobación automatizada cuando se suban los cambios.
+El test de Godot abre los dos mapas y comprueba navegación, economía y transiciones de ronda. El flujo de GitHub Actions ejecuta el escenario de prueba en Godot 4.3 y, si pasa, publica ejecutables de Linux y Windows como artefactos de la ejecución.
 
-Para compilar, instalá las plantillas correspondientes a tu versión de Godot y usá **Proyecto → Exportar**. Se incluyen presets básicos para Linux y Windows; no se incluyen ejecutables precompilados.
+Para compilar, instalá las plantillas correspondientes a tu versión de Godot y usá **Proyecto → Exportar**. Se incluyen presets básicos para Linux y Windows; los ejecutables no se guardan en el árbol de Git.

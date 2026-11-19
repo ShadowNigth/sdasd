@@ -34,6 +34,9 @@ func run() -> void:
 		await process_frame
 		expect(game.phase == Game.Phase.LIVE, "La ronda no empezó")
 		var target := game.fighters.back() as CharacterBody3D
+		for frame in range(35):
+			await physics_frame
+		expect(target.is_on_floor(), "El bot no aterrizó en la colisión original")
 		for actor in game.fighters:
 			if actor.team == 1:
 				actor.hurt(100, game.player)
@@ -84,6 +87,5 @@ func run() -> void:
 		Input.action_press("interact")
 		expect(game.objective.update(5.0) == 0, "La C4 no se desactivó")
 		Input.action_release("interact")
-	game.queue_free()
-	await process_frame
-	quit(1 if failed else 0)
+	game.free()
+	call_deferred("quit", 1 if failed else 0)

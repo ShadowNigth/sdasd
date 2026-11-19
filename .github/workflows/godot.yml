@@ -23,7 +23,7 @@ jobs:
           godot=Godot_v4.3-stable_linux.x86_64
           run_checked() {
             local status=0
-            timeout 100s "$godot" "$@" > /tmp/godot-check.log 2>&1 || status=$?
+            timeout 100s "$@" > /tmp/godot-check.log 2>&1 || status=$?
             cat /tmp/godot-check.log
             if grep -Eq '(^ERROR:|SCRIPT ERROR:|Parse Error:)' /tmp/godot-check.log; then
               grep -E '(^ERROR:|SCRIPT ERROR:|Parse Error:)' /tmp/godot-check.log | sort -u | head -9 | while IFS= read -r line; do
@@ -33,8 +33,8 @@ jobs:
             fi
             if [ "$status" != 0 ]; then echo "::error::Godot terminó con código $status: $*"; return "$status"; fi
           }
-          run_checked --headless --editor --path . --import
-          run_checked --headless --path . --script tests/smoke.gd
+          run_checked "$godot" --headless --editor --path . --import
+          run_checked xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 "$godot" --path . --script tests/smoke.gd
       - name: Export verified desktop builds
         run: |
           version=4.3.stable
@@ -47,10 +47,13 @@ jobs:
           "$godot" --headless --path . --export-release Windows
           test -s exports/linux/spd-offline.x86_64
           test -s exports/windows/spd-offline.exe
+          chmod +x exports/linux/spd-offline.x86_64
+          timeout 20s xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 exports/linux/spd-offline.x86_64 --quit-after 5
+          tar -C exports/linux -czf exports/SPD-Offline-Linux.tar.gz spd-offline.x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: SPD-Offline-Linux
-          path: exports/linux/
+          path: exports/SPD-Offline-Linux.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: SPD-Offline-Windows
