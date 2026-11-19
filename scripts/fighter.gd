@@ -13,6 +13,9 @@ var reserve := 35
 var cooldown := 0.0
 var reloading := 0.0
 var pitch := 0.0
+var blind := 0.0
+var respawn_time := 0.0
+var utility: Array[int] = [0, 0, 0]
 var camera: Camera3D
 var visuals: MeshInstance3D
 var view_weapon: Node3D
@@ -120,6 +123,35 @@ func hurt(amount: int, attacker: CharacterBody3D) -> void:
 			view_weapon.hide()
 		game.report_kill(attacker, self)
 
+func respawn(point: Vector3, facing: float) -> void:
+	global_position = point
+	rotation.y = facing
+	velocity = Vector3.ZERO
+	health = 100
+	collision_layer = 2
+	blind = 0.0
+	pitch = 0.0
+	crouched = false
+	zoomed = false
+	trigger = false
+	magazine.clear()
+	var w: Dictionary = Arsenal.WEAPONS[weapon]
+	rounds = w.mag
+	reserve = w.reserve
+	cooldown = 0.4
+	reloading = 0.0
+	target = null
+	memory = 0.0
+	sensor_visible = false
+	route_age = 0.0
+	patrol = Vector3.ZERO
+	if visuals:
+		visuals.show()
+	if camera:
+		camera.position = Vector3.UP * 1.58
+		camera.rotation = Vector3.ZERO
+		view_weapon.show()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not human or not alive() or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or not game.controls_enabled():
 		return
@@ -129,8 +161,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		pitch = clampf(pitch - event.relative.y * sensitivity, -1.48, 1.48)
 	elif event.is_action_pressed("fire"):
 		trigger = true
-	elif event.is_action_pressed("zoom") and weapon == 2:
+	elif event.is_action_pressed("zoom") and (weapon == 2 or Arsenal.WEAPONS[weapon].get("scope", false)):
 		zoomed = not zoomed
+	elif event.is_action_pressed("frag"):
+		game.throw_utility(self, 0, -camera.global_transform.basis.z)
+	elif event.is_action_pressed("flash"):
+		game.throw_utility(self, 1, -camera.global_transform.basis.z)
+	elif event.is_action_pressed("smoke"):
+		game.throw_utility(self, 2, -camera.global_transform.basis.z)
 	elif event.is_action_pressed("reload"):
 		start_reload()
 	elif event.is_action_pressed("sidearm"):
@@ -160,18 +198,23 @@ func fire(direction: Vector3, accuracy: float) -> void:
 	cooldown = w.delay
 	play(w.sound)
 	var spread: float = w.spread * accuracy
-	direction = (direction + Vector3(randfn(0.0, spread), randfn(0.0, spread), randfn(0.0, spread))).normalized()
-	var origin := eye()
-	var hit := ray(origin, origin + direction * 150.0)
-	if human:
-		pitch = minf(1.47, pitch + (0.008 if weapon == 0 else 0.016))
-	if not hit.is_empty():
+	var damage_by_target := {}
+	for pellet in range(w.get("pellets", 1)):
+		var shot := (direction + Vector3(randfn(0.0, spread), randfn(0.0, spread), randfn(0.0, spread))).normalized()
+		var origin := eye()
+		var hit := ray(origin, origin + shot * (35.0 if w.has("pellets") else 150.0))
+		if hit.is_empty():
+			continue
 		var enemy = hit.collider
 		if enemy.has_method("hurt") and enemy.team != team:
 			var head: bool = hit.position.y - enemy.global_position.y > (1.08 if enemy.crouched else 1.43)
-			enemy.hurt(int(w.damage * (2.7 if head else 1.0)), self)
-			if human:
-				game.hit_flash = 0.15
+			damage_by_target[enemy] = damage_by_target.get(enemy, 0) + int(w.damage * (2.7 if head else 1.0))
+	if human:
+		pitch = minf(1.47, pitch + (0.008 if weapon == 0 else 0.016))
+		if not damage_by_target.is_empty():
+			game.hit_flash = 0.15
+	for enemy in damage_by_target:
+		enemy.hurt(damage_by_target[enemy], self)
 
 func ray(from: Vector3, to: Vector3, mask: int = 3) -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(from, to, mask, [get_rid()])
@@ -182,6 +225,7 @@ func _physics_process(delta: float) -> void:
 	if not alive() or not game.controls_enabled():
 		trigger = false
 		return
+	blind = maxf(0.0, blind - delta)
 	cooldown = maxf(0.0, cooldown - delta)
 	if reloading > 0.0:
 		reloading -= delta
@@ -209,10 +253,13 @@ func player_move(delta: float) -> void:
 	shape.position.y = shape.shape.height * 0.5
 	var axis := Input.get_vector("left", "right", "forward", "back")
 	var direction := transform.basis * Vector3(axis.x, 0, axis.y)
+	var ladder: bool = game.arena.near_ladder(global_position + Vector3.UP * 0.55)
 	var speed := 2.25 if crouched or Input.is_action_pressed("walk") else 5.35
 	velocity.x = move_toward(velocity.x, direction.x * speed, delta * (34.0 if is_on_floor() else 10.0))
 	velocity.z = move_toward(velocity.z, direction.z * speed, delta * (34.0 if is_on_floor() else 10.0))
-	if Input.is_action_just_pressed("jump") and is_on_floor() and not crouched:
+	if ladder and not crouched:
+		velocity.y = -axis.y * 3.75
+	if Input.is_action_just_pressed("jump") and (is_on_floor() or ladder) and not crouched:
 		velocity.y = 5.4
 	camera.position.y = lerpf(camera.position.y, 1.0 if crouched else 1.58, minf(1.0, delta * 14.0))
 	camera.rotation.x = pitch
@@ -231,7 +278,7 @@ func can_see(candidate) -> bool:
 		return false
 	if offset.length_squared() > 36.0 and (-global_transform.basis.z).dot(offset.normalized()) < -0.1:
 		return false
-	return ray(eye(), candidate.eye()).get("collider") == candidate
+	return blind < 0.15 and not game.smoke_between(eye(), candidate.eye()) and ray(eye(), candidate.eye()).get("collider") == candidate
 
 func bot_move(delta: float) -> void:
 	next_think -= delta
@@ -268,7 +315,7 @@ func bot_move(delta: float) -> void:
 			direction = Vector3(offset.x, 0, offset.z).normalized() * 0.65
 		elif cooldown > 0.025 or reloading > 0.0:
 			direction = strafe_direction(offset.normalized())
-		if reaction <= 0.0 and (-global_transform.basis.z).dot(Vector3(offset.x, 0, offset.z).normalized()) > 0.94:
+		if reaction <= 0.0 and blind < 0.15 and (-global_transform.basis.z).dot(Vector3(offset.x, 0, offset.z).normalized()) > 0.94:
 			var before := rounds
 			fire(offset.normalized(), [4.8, 2.7, 1.55][game.difficulty])
 			if weapon == 1 and rounds < before and rounds % 4 == 0:

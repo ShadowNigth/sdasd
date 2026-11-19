@@ -20,6 +20,18 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          Godot_v4.3-stable_linux.x86_64 --headless --editor --path . --import 2>&1 | tee /tmp/godot-import.log
-          Godot_v4.3-stable_linux.x86_64 --headless --path . --script tests/smoke.gd 2>&1 | tee /tmp/godot-smoke.log
-          if grep -E '(^ERROR:|SCRIPT ERROR:|Parse Error:)' /tmp/godot-{import,smoke}.log; then exit 1; fi
+          godot=Godot_v4.3-stable_linux.x86_64
+          run_checked() {
+            local status=0
+            timeout 100s "$godot" "$@" > /tmp/godot-check.log 2>&1 || status=$?
+            cat /tmp/godot-check.log
+            if grep -Eq '(^ERROR:|SCRIPT ERROR:|Parse Error:)' /tmp/godot-check.log; then
+              grep -E '(^ERROR:|SCRIPT ERROR:|Parse Error:| at:)' /tmp/godot-check.log | head -25 | while IFS= read -r line; do
+                echo "::error::$line"
+              done
+              return 1
+            fi
+            if [ "$status" != 0 ]; then echo "::error::Godot terminó con código $status: $*"; return "$status"; fi
+          }
+          run_checked --headless --editor --path . --import
+          run_checked --headless --path . --script tests/smoke.gd

@@ -151,7 +151,7 @@ def convert_level(base, assets, source_name, name):
 
     visible = Obj(ROOT / 'maps' / (name + '.obj'), assets)
     physics = Obj(ROOT / 'maps' / (name + '_solid.obj'), assets)
-    spawns = {'ct': [], 't': []}
+    spawns = {'ct': [], 't': [], 'ladders': []}
     for key, (kind, data) in scene.items():
         if kind != 'GameObject' or data['m_IsActive'] != '1' or key not in by_object:
             continue
@@ -174,6 +174,12 @@ def convert_level(base, assets, source_name, name):
                 else:
                     matrix_for_render = matrix
                 visible.add(mesh, matrix_for_render, renderer['m_Materials'], batch)
+                if label.startswith('Ladder') and batch and int(batch['subMeshCount']):
+                    vertices, _, parts = read_mesh(mesh)
+                    ids = parts[int(batch['firstSubMesh'])].ravel()
+                    transformed = vertices[ids] @ matrix_for_render[:3, :3].T + matrix_for_render[:3, 3]
+                    transformed[:, 2] *= -1
+                    spawns['ladders'].append([transformed.min(axis=0).tolist(), transformed.max(axis=0).tolist()])
         for _, collider in components.get('BoxCollider', []):
             if collider['m_IsTrigger'] == '0' and collider['m_Enabled'] == '1':
                 add_box(physics, matrix, collider)
@@ -186,7 +192,7 @@ def convert_level(base, assets, source_name, name):
     for obj in (visible, physics):
         assert obj.offset > 1
         obj.save()
-    assert all(spawns.values())
+    assert spawns['ct'] and spawns['t']
     (ROOT / 'maps' / (name + '.json')).write_text(json.dumps(spawns, indent=2) + '\n')
     print(name, visible.offset - 1, physics.offset - 1, {k: len(v) for k, v in spawns.items()})
 
@@ -199,15 +205,25 @@ def main(decompiled):
     assets = index_assets(base)
     for source, name in [('$2000$', '2000'), ('awp_lego_2', 'lego')]:
         convert_level(base, assets, source, name)
-    for name in ('ak47_01', 'awp_01', 'deagle_01', 'ak47_clipin'):
+    catalog = (ROOT.parent / 'scripts/arsenal.gd').read_text()
+    sounds = set(re.findall(r'"sound": "([^"]+)"', catalog))
+    sounds.update(('ak47_clipin', 'grenade_throw', 'explode3', 'flashbang_explode1', 'smoke_emit'))
+    for name in sorted(sounds):
         shutil.copyfile(cache / 'AudioClip' / (name + '.ogg'), ROOT / 'audio' / (name + '.ogg'))
-    textures = {'w_rif_ak47': 'ak47', 'w_snip_awp': 'awp', 'w_pist_deagle': 'pist_deagle',
-                'ctm_idf': None, 'tm_leet_variantA': None}
-    for name, texture in textures.items():
+    textures = {'w_rif_ak47': 'ak47', 'w_snip_awp': 'awp', 'w_pist_deagle': 'pist_deagle'}
+    names = set(re.findall(r'"mesh": "([^"]+)"', catalog))
+    names.update(('ctm_idf', 'tm_leet_variantA', 'w_eq_flashbang',
+                  'w_eq_fraggrenade_combine', 'w_eq_smokegrenade_combine'))
+    for name in sorted(names):
         obj = Obj(ROOT / 'models' / (name + '.obj'), {})
         obj.add(cache / 'Mesh' / (name + '.asset'), np.eye(4))
-        if texture:
-            obj.materials['plain'] = cache / 'Texture2D' / (texture + '.png')
+        key = name.removeprefix('w_').removesuffix('_combine')
+        guesses = [textures.get(name, key), key.partition('_')[2]]
+        for texture in guesses:
+            path = cache / 'Texture2D' / (texture + '.png')
+            if path.is_file():
+                obj.materials['plain'] = path
+                break
         obj.save()
 
 

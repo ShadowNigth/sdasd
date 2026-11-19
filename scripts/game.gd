@@ -1,11 +1,14 @@
 extends Node3D
 
 const Arena = preload("res://scripts/arena.gd")
+const Grenade = preload("res://scripts/grenade.gd")
 const Fighter = preload("res://scripts/fighter.gd")
 const Arsenal = preload("res://scripts/arsenal.gd")
 const MAPS := ["2000", "lego"]
 const TEAMS := ["CT", "T"]
 const TARGET_SCORE := 8
+const DM_TARGET := 30
+const DM_DURATION := 300.0
 const ROUND_DURATION := 105.0
 const CT_NAMES := ["Atlas", "Delta", "Nexo", "Vértice", "Faro"]
 const T_NAMES := ["Rook", "Eco", "Sombra", "Cobre", "Spectre"]
@@ -16,6 +19,7 @@ var roster: Node3D
 var fighters: Array[Fighter] = []
 var player: Fighter
 var difficulty := 1
+var deathmatch := false
 var team_size := 4
 var side := 0
 var scores := [0, 0]
@@ -28,6 +32,8 @@ var sensitivity := 0.0024
 var paused := false
 var shopping := false
 var hit_flash := 0.0
+const UTILITY := ["Explosiva", "Aturdidora", "Humo"]
+const UTILITY_PRICES := [300, 200, 300]
 var feed_time := 0.0
 var match_text := ""
 var spectating: Fighter
@@ -39,7 +45,9 @@ var reticle: Label
 var title_card: PanelContainer
 var content: VBoxContainer
 var shop_hint: Label
+var blind_overlay: ColorRect
 var map_choice: OptionButton
+var mode_choice: OptionButton
 var diff_choice: OptionButton
 var team_choice: OptionButton
 var count_choice: OptionButton
@@ -49,7 +57,7 @@ var mouse_slider: HSlider
 func _ready() -> void:
 	for entry in [["forward", KEY_W], ["back", KEY_S], ["left", KEY_A], ["right", KEY_D],
 		["jump", KEY_SPACE], ["crouch", KEY_CTRL], ["walk", KEY_SHIFT], ["reload", KEY_R],
-		["primary", KEY_1], ["sidearm", KEY_2], ["shop", KEY_B], ["pause", KEY_ESCAPE], ["score", KEY_TAB]]:
+		["frag", KEY_G], ["flash", KEY_F], ["smoke", KEY_H], ["primary", KEY_1], ["sidearm", KEY_2], ["shop", KEY_B], ["pause", KEY_ESCAPE], ["score", KEY_TAB]]:
 		bind_action(entry[0], entry[1], false)
 	bind_action("fire", MOUSE_BUTTON_LEFT, true)
 	bind_action("zoom", MOUSE_BUTTON_RIGHT, true)
@@ -73,7 +81,7 @@ func bind_action(action: String, code: int, mouse: bool) -> void:
 func controls_enabled() -> bool:
 	return phase == Phase.LIVE and not paused
 
-func start_match(map_id: String, bot_level: int, size: int, chosen_side: int) -> void:
+func start_match(map_id: String, bot_level: int, size: int, chosen_side: int, is_deathmatch := false) -> void:
 	clear_world()
 	scores = [0, 0]
 	wallet = 800
@@ -83,6 +91,9 @@ func start_match(map_id: String, bot_level: int, size: int, chosen_side: int) ->
 	difficulty = bot_level
 	team_size = size
 	side = chosen_side
+	deathmatch = is_deathmatch
+	if deathmatch:
+		wallet = 6500
 	paused = false
 	arena = Arena.new()
 	arena.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -129,7 +140,7 @@ func new_round() -> void:
 				actor.owned = keep
 				actor.equip(keep.back())
 			else:
-				if round_index > 1:
+				if round_index > 1 or deathmatch:
 					actor.owned.append(2 if index == 2 and round_index > 2 else 1)
 					actor.equip(actor.owned.back())
 	phase = Phase.BUY
@@ -148,6 +159,10 @@ func patrol_point(team: int) -> Vector3:
 	return enemy
 
 func report_kill(attacker: Fighter, victim: Fighter) -> void:
+	if deathmatch:
+		victim.respawn_time = 2.6
+		if attacker != victim:
+			scores[attacker.team] += 1
 	if attacker == player and attacker != victim:
 		kills += 1
 		wallet = mini(16000, wallet + 300)
@@ -169,8 +184,20 @@ func _process(delta: float) -> void:
 	time_left -= delta
 	if phase == Phase.BUY and time_left <= 0.0:
 		phase = Phase.LIVE
-		time_left = ROUND_DURATION
+		time_left = DM_DURATION if deathmatch else ROUND_DURATION
 		match_text = ""
+	elif phase == Phase.LIVE and deathmatch:
+		if scores.max() >= DM_TARGET or time_left <= 0.0:
+			show_result()
+			return
+		for actor in fighters:
+			if not actor.alive():
+				actor.respawn_time -= delta
+				if actor.respawn_time <= 0.0:
+					var point: Vector3 = respawn_point(actor.team)
+					actor.respawn(point, arena.facing(actor.team, point))
+					if actor == player:
+						spectating = null
 	elif phase == Phase.LIVE:
 		var alive_counts := [0, 0]
 		for actor in fighters:
@@ -226,6 +253,11 @@ func _input(event: InputEvent) -> void:
 func setup_ui() -> void:
 	hud = CanvasLayer.new()
 	add_child(hud)
+	blind_overlay = ColorRect.new()
+	hud.add_child(blind_overlay)
+	blind_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blind_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	blind_overlay.hide()
 	match_bar = make_label(hud, 24, Color("dfecfa"))
 	match_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	match_bar.offset_left = -375
@@ -321,16 +353,18 @@ func show_menu() -> void:
 	shopping = false
 	clear_world()
 	phase = Phase.MENU
+	blind_overlay.hide()
 	match_bar.hide()
 	status_bar.hide()
 	feed.hide()
 	panel("Strike Port Destruction", "SPD  /  PARTIDA LOCAL  /  GODOT")
+	mode_choice = option("Modo", ["Eliminación", "Deathmatch por equipos"], int(deathmatch))
 	map_choice = option("Mapa", ["$2000$", "AWP Lego 2"], 0)
 	diff_choice = option("Dificultad de bots", ["Recluta", "Veterano", "Experto"], difficulty)
 	team_choice = option("Tu equipo", ["CT · Defensa", "T · Asalto"], side)
 	count_choice = option("Jugadores por equipo", ["2 vs 2", "3 vs 3", "4 vs 4", "5 vs 5"], team_size - 2)
 	button("Iniciar partida", func() -> void:
-		start_match(MAPS[map_choice.selected], diff_choice.selected, count_choice.selected + 2, team_choice.selected))
+		start_match(MAPS[map_choice.selected], diff_choice.selected, count_choice.selected + 2, team_choice.selected, mode_choice.selected == 1))
 	make_label(content, 14, Color("a0b6cb"), "WASD mover · ratón apuntar · R recargar · B comprar\nEspacio saltar · Ctrl agacharse · Shift caminar · Esc pausa")
 	button("Salir", get_tree().quit)
 
@@ -372,11 +406,20 @@ func show_shop() -> void:
 	shopping = true
 	panel("Compra de equipamiento", "SPD  /  PREPARACIÓN")
 	shop_hint = make_label(content, 17, Color("e9bb78"), "$%d disponibles" % wallet)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size.y = 265
+	content.add_child(scroll)
+	var catalog := VBoxContainer.new()
+	catalog.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(catalog)
 	for index in range(1, Arsenal.WEAPONS.size()):
 		var w: Dictionary = Arsenal.WEAPONS[index]
-		var entry := button("%s · $%d" % [w.name, w.price], purchase.bind(index))
-		if player.owned.has(index):
-			entry.text = "%s · equipar" % w.name
+		var entry := Button.new()
+		entry.text = "%s · equipar" % w.name if player.owned.has(index) else "%s · $%d" % [w.name, w.price]
+		entry.pressed.connect(purchase.bind(index))
+		catalog.add_child(entry)
+	for index in range(UTILITY.size()):
+		button("%s · $%d" % [UTILITY[index], UTILITY_PRICES[index]], purchase_utility.bind(index))
 	button("Volver a la ronda", close_overlay)
 
 func purchase(index: int) -> void:
@@ -394,11 +437,13 @@ func purchase(index: int) -> void:
 
 func show_result() -> void:
 	phase = Phase.FINISHED
-	panel("Victoria" if scores[side] > scores[1 - side] else "Derrota", "SPD  /  PARTIDA TERMINADA")
+	panel("Empate" if scores[side] == scores[1 - side] else ("Victoria" if scores[side] > scores[1 - side] else "Derrota"), "SPD  /  PARTIDA TERMINADA")
 	make_label(content, 22, Color("c1d2df"), "CT %d  :  %d T   ·   Bajas %d / Muertes %d" % [scores[0], scores[1], kills, deaths])
 	button("Volver al menú", show_menu)
 
 func update_hud() -> void:
+	blind_overlay.visible = player.alive() and player.blind > 0.01 and not paused
+	blind_overlay.color = Color(0.95, 0.97, 1.0, clampf(player.blind, 0.0, 0.98))
 	var seconds := maxi(0, ceili(time_left))
 	match_bar.text = "CT %02d    ·    %02d:%02d    ·    %02d T\n%s" % [scores[0], seconds / 60, seconds % 60, scores[1], match_text]
 	var w: Dictionary = Arsenal.WEAPONS[player.weapon]
@@ -406,9 +451,57 @@ func update_hud() -> void:
 		status_bar.text = "Espectador · " + (spectating.callsign if is_instance_valid(spectating) else "Esperando próxima ronda")
 	else:
 		status_bar.text = "♥ %03d      $%d      %s    %02d / %02d" % [player.health, wallet, w.name, player.rounds, player.reserve]
+		status_bar.text += "    G:%d F:%d H:%d" % player.utility
 		if player.reloading > 0.0:
 			status_bar.text += "  ·  Recargando"
 	if Input.is_action_pressed("score"):
 		match_bar.text += "\nRONDA %d   ·   BAJAS %d   ·   MUERTES %d" % [round_index, kills, deaths]
 	reticle.visible = phase == Phase.LIVE and player.alive() and not paused
 	reticle.text = "×" if hit_flash > 0.0 else ("⊕" if player.zoomed else "+")
+
+func purchase_utility(index: int) -> void:
+	if phase != Phase.BUY or not shopping:
+		return
+	if player.utility[index] >= 1 or wallet < UTILITY_PRICES[index]:
+		shop_hint.text = "Ya equipada o saldo insuficiente · $%d" % wallet
+		return
+	wallet -= UTILITY_PRICES[index]
+	player.utility[index] += 1
+	shop_hint.text = "%s equipada · $%d" % [UTILITY[index], wallet]
+
+func throw_utility(actor: Fighter, index: int, direction: Vector3) -> void:
+	if not controls_enabled() or not actor.alive() or actor.utility[index] <= 0:
+		return
+	actor.utility[index] -= 1
+	actor.play("grenade_throw")
+	var grenade := Grenade.new()
+	roster.add_child(grenade)
+	grenade.add_to_group("offline_utility")
+	grenade.launch(self, actor, index, direction)
+
+func smoke_between(origin: Vector3, destination: Vector3) -> bool:
+	var line := destination - origin
+	if line.length_squared() == 0.0:
+		return false
+	for node in get_tree().get_nodes_in_group("offline_utility"):
+		if node.smoke:
+			var center: Vector3 = node.global_position + Vector3.UP * 0.8
+			var nearest := origin + line * clampf((center - origin).dot(line) / line.length_squared(), 0.0, 1.0)
+			if center.distance_squared_to(nearest) < 5.5:
+				return true
+	return false
+
+func respawn_point(team: int) -> Vector3:
+	var best: Vector3 = arena.start_position(team, 0)
+	var best_clearance := -1.0
+	for i in range(arena.spawns[team].size()):
+		var candidate: Vector3 = arena.start_position(team, i)
+		var nearest := INF
+		for actor in fighters:
+			if actor.alive():
+				var weight := 5.0 if actor.team == team else 1.0
+				nearest = minf(nearest, candidate.distance_squared_to(actor.global_position) * weight)
+		if nearest > best_clearance:
+			best_clearance = nearest
+			best = candidate
+	return best

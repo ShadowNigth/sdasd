@@ -1,6 +1,7 @@
 """Smoke-test converted assets without Unity or Godot."""
 import json
 import math
+import re
 import unittest
 from pathlib import Path
 
@@ -60,7 +61,11 @@ class ImportedAssets(unittest.TestCase):
 
     def test_audio_headers(self):
         audio = list((ASSETS / 'audio').glob('*.ogg'))
-        self.assertEqual(len(audio), 4)
+        catalog = (ASSETS.parent / 'scripts/arsenal.gd').read_text()
+        expected = set(re.findall(r'"sound": "([^"]+)"', catalog))
+        self.assertTrue(expected.issubset({clip.stem for clip in audio}))
+        models = set(re.findall(r'"mesh": "([^"]+)"', catalog))
+        self.assertTrue(models.issubset({model.stem for model in (ASSETS / 'models').glob('*.obj')}))
         for clip in audio:
             self.assertEqual(clip.read_bytes()[:4], b'OggS')
 

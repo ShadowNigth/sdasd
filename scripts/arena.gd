@@ -3,6 +3,7 @@ extends Node3D
 var spawns: Array = [[], []]
 var region: NavigationRegion3D
 var nav_ready := false
+var ladders: Array[AABB] = []
 
 func build(id: String) -> void:
 	var path := "res://assets/maps/" + id
@@ -21,6 +22,10 @@ func build(id: String) -> void:
 	for side in range(2):
 		for p in data[["ct", "t"][side]]:
 			spawns[side].append(Vector3(p[0], p[1], p[2]))
+	for pair in data.get("ladders", []):
+		var low := Vector3(pair[0][0], pair[0][1], pair[0][2])
+		var high := Vector3(pair[1][0], pair[1][1], pair[1][2])
+		ladders.append(AABB(low, high - low).grow(0.65))
 	var env := WorldEnvironment.new()
 	env.environment = Environment.new()
 	env.environment.background_mode = Environment.BG_COLOR
@@ -60,3 +65,9 @@ func facing(side: int, point: Vector3) -> float:
 		center += p
 	center /= spawns[1 - side].size()
 	return atan2(point.x - center.x, point.z - center.z)
+
+func near_ladder(point: Vector3) -> bool:
+	for bounds in ladders:
+		if bounds.has_point(point):
+			return true
+	return false

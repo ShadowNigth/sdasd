@@ -47,6 +47,28 @@ func run() -> void:
 		expect(game.round_index == 2 and game.player.weapon == 1, "No se conservó el arma en la siguiente ronda")
 		game.show_menu()
 		expect(game.fighters.is_empty(), "El menú dejó combatientes activos")
+	game.start_match("lego", 1, 2, 0, true)
+	game.show_shop()
+	game.purchase_utility(2)
+	expect(game.player.utility[2] == 1, "No se compró la granada de humo")
+	game.close_overlay()
+	game.time_left = 0.0
+	await process_frame
+	await process_frame
+	game.throw_utility(game.player, 2, Vector3.FORWARD)
+	var thrown := get_nodes_in_group("offline_utility")
+	expect(thrown.size() == 1 and game.player.utility[2] == 0, "No se lanzó la granada")
+	if thrown.size() == 1:
+		thrown[0].call("detonate")
+		var center: Vector3 = thrown[0].global_position + Vector3.UP
+		expect(game.smoke_between(center - Vector3.RIGHT * 5, center + Vector3.RIGHT * 5), "El humo no obstruye a los bots")
+	var victim = game.fighters.back()
+	victim.hurt(100, game.player)
+	expect(game.scores[0] == 1, "Deathmatch no registró la baja")
+	victim.respawn_time = 0.0
+	await process_frame
+	await process_frame
+	expect(victim.alive(), "Deathmatch no reaparició al bot")
 	game.queue_free()
 	await process_frame
 	quit(1 if failed else 0)
