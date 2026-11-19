@@ -54,6 +54,15 @@ func run() -> void:
 		for frame in range(35):
 			await physics_frame
 		expect(target.is_on_floor(), "El bot no aterrizó en la colisión original")
+		game.player.cooldown = 0.0
+		var previous := game.player.rounds
+		game.player.fire(-game.player.camera.global_transform.basis.z, 1.0)
+		expect(game.player.rounds == previous - 1, "El disparo no consumió munición")
+		var casing_count := 0
+		for child in game.roster.get_children():
+			if child is RigidBody3D:
+				casing_count += 1
+		expect(casing_count > 0, "El disparo no creó casquillo físico")
 		if is_instance_valid(bot.rig) and bot.joints.has("bip01lthigh"):
 			var thigh: int = bot.joints["bip01lthigh"]
 			var rest: Quaternion = bot.rig.get_bone_rest(thigh).basis.get_rotation_quaternion()
