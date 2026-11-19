@@ -27,7 +27,7 @@ Los bots son propios de esta versión: buscan por rutas de navegación, detectan
 | Incluido | Pendiente para paridad con el original |
 | --- | --- |
 | Geometría estática, texturas principales, colisiones y puntos de aparición de los dos mapas recuperados | Disparadores y objetos destructibles originales, iluminación y efectos equivalentes |
-| 32 armas de fuego, cuchillo, C4, tres granadas, escaleras para el jugador y dos personajes con colores de equipo | Variantes, esqueletos, animaciones originales y sonidos restantes |
+| 32 armas de fuego, cuchillo, C4, tres granadas, escaleras para el jugador y dos personajes con sus materiales originales | Variantes, esqueletos, animaciones originales y sonidos restantes |
 | Menú local, eliminación, demolición y deathmatch por equipos, economía, HUD, mira, pausa y espectador | Otros modos, interfaz y opciones completas del original, controles táctiles y exportación Android |
 
 Esto **no es todavía un porte completo**. La referencia es una extracción de Unity con código descompilado y recursos serializados; se reutiliza contenido convertido y se reimplementa la lógica en GDScript. Las funciones de red, servicios y actualizador no son parte del objetivo offline.

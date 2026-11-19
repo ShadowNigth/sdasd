@@ -1,2 +1,9 @@
-newmtl m_plain
+newmtl m_4c6dd03382907ef4f98cfd6f5dc4bfab
 Kd 0.75 0.75 0.75
+map_Kd ctm_idf_upperbody_3.png
+newmtl m_5ba6219617588cf4cbd026aad35b6a68
+Kd 0.75 0.75 0.75
+map_Kd ctm_idf_lowerbody_3.png
+newmtl m_2f6be1b1ee7548b4ca4acb54873835bc
+Kd 0.75 0.75 0.75
+map_Kd ctm_idf_head_varianta.png

@@ -1,2 +1,9 @@
-newmtl m_plain
+newmtl m_7af1161dfb1805342998d743dcc7b078
 Kd 0.75 0.75 0.75
+map_Kd tm_leet_upperbody_varianta.png
+newmtl m_a7fe110494e0cab4dbb6b3baaff3483a
+Kd 0.75 0.75 0.75
+map_Kd tm_leet_lowerbody_varianta.png
+newmtl m_9b9bec5430c51a249a0989235b759d32
+Kd 0.75 0.75 0.75
+map_Kd tm_elite_head_varianta.png

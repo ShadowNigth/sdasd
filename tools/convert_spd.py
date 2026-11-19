@@ -216,9 +216,21 @@ def main(decompiled):
     names = set(re.findall(r'"mesh": "([^"]+)"', catalog))
     names.update(('ctm_idf', 'tm_leet_variantA', 'w_eq_flashbang',
                   'w_eq_fraggrenade_combine', 'w_eq_smokegrenade_combine', 'w_knife_default_t', 'w_ied_w_eq_c4'))
+    characters = {'ctm_idf': ('player_idf', 'Player_IDF'),
+                  'tm_leet_variantA': ('player_leet_a', 'Player_LEET_A')}
+    cache_assets = index_assets(cache)
     for name in sorted(names):
-        obj = Obj(ROOT / 'models' / (name + '.obj'), {})
-        obj.add(cache / 'Mesh' / (name + '.asset'), np.eye(4))
+        obj = Obj(ROOT / 'models' / (name + '.obj'), cache_assets)
+        materials = []
+        if name in characters:
+            folder, prefab = characters[name]
+            scene = documents(cache / 'gameres/sdk/models/players' / folder / (prefab + '.prefab'))
+            path = cache / 'Mesh' / (name + '.asset')
+            for kind, data in scene.values():
+                if kind == 'SkinnedMeshRenderer' and cache_assets.get(data['m_Mesh'].get('guid')) == path:
+                    materials = data['m_Materials']
+                    break
+        obj.add(cache / 'Mesh' / (name + '.asset'), np.eye(4), materials)
         key = name.removeprefix('w_').removesuffix('_combine')
         guesses = [textures.get(name, key), key.partition('_')[2]]
         for texture in guesses:

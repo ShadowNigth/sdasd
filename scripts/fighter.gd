@@ -18,6 +18,8 @@ var respawn_time := 0.0
 var utility: Array[int] = [0, 0, 0]
 var camera: Camera3D
 var visuals: MeshInstance3D
+var held: MeshInstance3D
+var movement_cycle := 0.0
 var view_weapon: Node3D
 var sound
 var agent: NavigationAgent3D
@@ -68,10 +70,10 @@ func setup(owner_game: Node3D, is_human: bool, side: int, label: String) -> void
 		visuals.mesh = load("res://assets/models/" + ("ctm_idf" if team == 0 else "tm_leet_variantA") + ".obj")
 		visuals.rotation_degrees.x = 90
 		visuals.scale = Vector3.ONE * 2.45
-		var tint := StandardMaterial3D.new()
-		tint.albedo_color = Color("477fba") if team == 0 else Color("b16b3d")
-		visuals.material_override = tint
 		add_child(visuals)
+		held = MeshInstance3D.new()
+		add_child(held)
+		held.rotation_degrees.x = 90
 		agent = NavigationAgent3D.new()
 		agent.path_desired_distance = 0.48
 		agent.target_desired_distance = 0.85
@@ -105,6 +107,11 @@ func equip(index: int) -> void:
 		model.rotation_degrees.x = 90
 		model.position = Vector3(0.20, -0.17, -0.26 if weapon == 0 else -0.13)
 		view_weapon.add_child(model)
+	else:
+		held.mesh = load("res://assets/models/" + w.mesh + ".obj")
+		var bounds := held.mesh.get_aabb()
+		var anchor := Vector3(0.27, 1.10, -0.33)
+		held.position = anchor - Basis(Vector3.RIGHT, PI * 0.5) * bounds.get_center()
 
 func alive() -> bool:
 	return health > 0
@@ -120,6 +127,7 @@ func hurt(amount: int, attacker: CharacterBody3D) -> void:
 		collision_layer = 0
 		if visuals:
 			visuals.hide()
+			held.hide()
 		if view_weapon:
 			view_weapon.hide()
 		game.report_kill(attacker, self)
@@ -148,6 +156,7 @@ func respawn(point: Vector3, facing: float) -> void:
 	patrol = Vector3.ZERO
 	if visuals:
 		visuals.show()
+		held.show()
 	if camera:
 		camera.position = Vector3.UP * 1.58
 		camera.rotation = Vector3.ZERO
@@ -246,6 +255,14 @@ func _physics_process(delta: float) -> void:
 	else:
 		bot_move(delta)
 	move_and_slide()
+	var pace := Vector2(velocity.x, velocity.z).length()
+	movement_cycle += pace * delta * 4.0
+	var bob := sin(movement_cycle) * 0.023 * clampf(pace / 4.0, 0.0, 1.0)
+	if human:
+		view_weapon.position.y = bob * 0.52
+	else:
+		visuals.position.y = bob
+		visuals.rotation.z = sin(movement_cycle * 0.5) * 0.05 * clampf(pace / 4.0, 0.0, 1.0)
 	if global_position.y < -60:
 		hurt(100, self)
 
