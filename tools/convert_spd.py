@@ -229,7 +229,14 @@ def main(decompiled):
     sounds.update(f'concrete_ct_{i:02d}' for i in range(1, 5))
     for name in sorted(sounds):
         shutil.copyfile(cache / 'AudioClip' / (name + '.ogg'), ROOT / 'audio' / (name + '.ogg'))
-    textures = {'w_rif_ak47': 'ak47', 'w_snip_awp': 'awp', 'w_pist_deagle': 'pist_deagle'}
+    textures = {
+        'w_rif_ak47': 'ak47', 'w_snip_awp': 'awp', 'w_pist_deagle': 'pist_deagle',
+        'w_eq_flashbang': 'm84_flashbang_grenade', 'w_eq_fraggrenade_combine': 'm67_grenade_01',
+        'w_eq_smokegrenade_combine': 'smoke_grenade', 'w_ied_w_eq_c4': 'c4',
+        'w_knife_default_ct': 'knife_ct', 'w_knife_default_t': 'knife_t',
+        'w_pist_223_silencer': 'pist_223', 'w_pist_elite': 'm9a1',
+        'w_shot_sawedoff': 'shot_sawedoff_01', 'w_smg_mac10': 'smg_mac10_1',
+    }
     names = set(re.findall(r'"mesh": "([^"]+)"', catalog))
     names.update(('ctm_idf', 'tm_leet_variantA', 'w_eq_flashbang',
                   'w_eq_fraggrenade_combine', 'w_eq_smokegrenade_combine', 'w_knife_default_t', 'w_ied_w_eq_c4'))

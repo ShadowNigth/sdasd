@@ -1,2 +1,3 @@
 newmtl m_plain
 Kd 0.75 0.75 0.75
+map_Kd m67_grenade_01.png
